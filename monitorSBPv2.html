@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor SBP 2026 - Control de Acceso</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dorado: #d4af37;
+            --azul-docente: #0a112e;
+            --bg-estudiante: #ffffff;
+            --text-estudiante: #0a112e;
+            --color-tardanza: #ff0000;
+        }
+
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            background-color: #050a1f;
+            color: #ffffff;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER AMPLIADO (20% del alto para resaltar el logo) */
+        #header {
+            height: 20vh;
+            width: 94%;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 0.6vh solid var(--dorado);
+            flex-shrink: 0;
+            box-sizing: border-box;
+            padding: 1vh 0;
+        }
+
+        /* Logo con tamaño aumentado manteniendo proporción */
+        #header img {
+            height: 16vh; /* Casi todo el alto del header */
+            width: auto;
+            object-fit: contain;
+        }
+
+        #reloj {
+            font-size: 9vh;
+            font-weight: 800;
+            color: var(--dorado);
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        /* CONTENEDOR (80% del alto restante) */
+        #contenedor-tarjetas {
+            height: 80vh;
+            width: 94%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2vh 0;
+            gap: 2vh;
+            box-sizing: border-box;
+        }
+
+        .tarjeta {
+            flex: 1; 
+            max-height: 23vh;
+            border-radius: 2.5vh;
+            padding: 0 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: entrar 0.5s ease-out;
+            box-shadow: 0 12px 25px rgba(0,0,0,0.4);
+            box-sizing: border-box;
+        }
+
+        .DOCENTE {
+            background: rgba(255, 255, 255, 0.08);
+            border-left: 2.8vw solid var(--dorado);
+            color: white;
+        }
+
+        .ESTUDIANTE {
+            background: var(--bg-estudiante);
+            border-left: 2.8vw solid #3498db;
+            color: var(--text-estudiante);
+        }
+
+        .TARDANZA {
+            outline: 1vh solid var(--color-tardanza);
+            animation: pulsoTardanza 0.8s infinite;
+        }
+
+        .nombre { 
+            font-size: 4.8vh; 
+            font-weight: 800; 
+            margin: 0; 
+            line-height: 1;
+            text-transform: uppercase;
+        } 
+
+        .perfil-label {
+            font-size: 2.2vh;
+            font-weight: bold;
+            letter-spacing: 1.5px;
+            opacity: 0.7;
+            margin-bottom: 0.5vh;
+        }
+
+        .tipo-estado { 
+            font-size: 3vh; 
+            font-weight: bold;
+            color: var(--dorado);
+            margin-top: 0.5vh;
+        }
+        .ESTUDIANTE .tipo-estado { color: #2980b9; }
+        .TARDANZA .tipo-estado { color: var(--color-tardanza); }
+
+        .hora-marca { 
+            font-size: 7vh; 
+            font-weight: 800; 
+            background: rgba(0,0,0,0.15); 
+            padding: 1.5vh 3.5vw; 
+            border-radius: 2vh; 
+            text-align: center;
+            min-width: 18vw;
+        }
+
+        @keyframes entrar { 
+            from { opacity: 0; transform: scale(0.95); } 
+            to { opacity: 1; transform: scale(1); } 
+        }
+
+        @keyframes pulsoTardanza {
+            0% { background-color: #ffffff; }
+            50% { background-color: #ffdddd; }
+            100% { background-color: #ffffff; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <img src="insignia.png" alt="SBP" onerror="this.src='https://via.placeholder.com/200x200?text=SBP+LOGO'">
+        <div id="reloj">--:--:--</div>
+    </div>
+
+    <div id="contenedor-tarjetas">
+        </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzkDuskL8PVOxnWQwC6UlhtGQoblCkcCuwRtkDuFhvtSqSiyRxCzRChOrJw2UySQ2tACg/exec"; 
+
+        let ultimoID = "";
+        let desfase = 0;
+
+        async function sincronizar() {
+            try {
+                const res = await fetch('https://worldtimeapi.org/api/timezone/America/Lima');
+                const data = await res.json();
+                desfase = new Date(data.datetime).getTime() - new Date().getTime();
+            } catch (e) { desfase = 0; }
+        }
+
+        function actualizarReloj() {
+            const ahora = new Date(new Date().getTime() + desfase);
+            document.getElementById('reloj').innerText = ahora.toLocaleTimeString('es-PE', { hour12: false });
+        }
+
+        async function refrescar() {
+            try {
+                const res = await fetch(`${SCRIPT_URL}?v=monitor&t=${new Date().getTime()}`);
+                const listaDatos = await res.json(); 
+                
+                if (Array.isArray(listaDatos) && listaDatos.length > 0) {
+                    const idMasReciente = listaDatos[0].nombre + listaDatos[0].hora + listaDatos[0].perfil;
+                    
+                    if (idMasReciente !== ultimoID) {
+                        ultimoID = idMasReciente;
+                        const contenedor = document.getElementById("contenedor-tarjetas");
+                        contenedor.innerHTML = ""; 
+
+                        listaDatos.slice(0, 3).forEach(datos => {
+                            const div = document.createElement("div");
+                            let esTardanza = (datos.tipo === "TARDANZA");
+                            div.className = `tarjeta ${datos.perfil} ${esTardanza ? 'TARDANZA' : ''}`;
+                            
+                            div.innerHTML = `
+                                <div>
+                                    <div class="perfil-label">${datos.perfil}</div>
+                                    <p class="nombre">${datos.nombre}</p>
+                                    <div class="tipo-estado">${datos.tipo} REGISTRADO</div>
+                                </div>
+                                <div class="hora-marca">${datos.hora}</div>
+                            `;
+                            contenedor.appendChild(div);
+                        });
+                    }
+                }
+            } catch (e) { console.log("Reconectando..."); }
+        }
+
+        sincronizar();
+        setInterval(actualizarReloj, 1000);
+        setInterval(refrescar, 3000);
+        setInterval(sincronizar, 3600000);
+    </script>
+</body>
+</html>
